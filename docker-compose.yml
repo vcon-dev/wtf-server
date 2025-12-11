@@ -1,0 +1,79 @@
+version: '3.8'
+
+services:
+  wtf-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - HOST=0.0.0.0
+      - LOG_LEVEL=info
+      - NIM_ASR_URL=http://nim-asr:9000
+      - NIM_DEFAULT_MODEL=parakeet-tdt-1.1b
+      - NIM_TIMEOUT_MS=300000
+      - MAX_AUDIO_SIZE_MB=100
+      - MAX_VCON_SIZE_MB=200
+    depends_on:
+      nim-asr:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # NVIDIA NIM ASR Service
+  # Requires NVIDIA GPU with driver and NVIDIA Container Toolkit
+  nim-asr:
+    image: nvcr.io/nim/nvidia/parakeet-ctc-1.1b:latest
+    ports:
+      - "9000:9000"
+    environment:
+      - NGC_API_KEY=${NGC_API_KEY}
+      # Use H200/H100 optimized TensorRT profile
+      - NIM_MANIFEST_PROFILE=h100
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+
+  # Alternative: Canary model for multilingual support
+  nim-asr-canary:
+    image: nvcr.io/nim/nvidia/canary-1b:latest
+    profiles:
+      - multilingual
+    ports:
+      - "9001:9000"
+    environment:
+      - NGC_API_KEY=${NGC_API_KEY}
+      - NIM_MANIFEST_PROFILE=h100
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
