@@ -6,10 +6,10 @@ import {
   type EnrichmentInput,
 } from "../../src/services/vcon-enricher.js";
 import type { NormalizedVcon } from "../../src/types/vcon.js";
-import type { TranscribeResult } from "../../src/services/nvidia-asr.js";
+import type { AsrTranscribeResult } from "../../src/types/asr.js";
 
 describe("vcon-enricher", () => {
-  const mockTranscribeResult: TranscribeResult = {
+  const mockTranscribeResult: AsrTranscribeResult = {
     text: "Hello, how can I help you today?",
     language: "en-US",
     duration: 3.0,
@@ -35,6 +35,8 @@ describe("vcon-enricher", () => {
       },
     ],
     processingTime: 500,
+    provider: "nvidia",
+    model: "parakeet-tdt-1.1b",
   };
 
   describe("createWtfTranscription", () => {
@@ -42,6 +44,7 @@ describe("vcon-enricher", () => {
       const input: EnrichmentInput = {
         dialogIndex: 0,
         transcription: mockTranscribeResult,
+        provider: "nvidia",
         model: "parakeet-tdt-1.1b",
         audioDuration: 3.0,
       };
@@ -76,7 +79,7 @@ describe("vcon-enricher", () => {
     });
 
     it("should handle transcription without word-level data", () => {
-      const simpleResult: TranscribeResult = {
+      const simpleResult: AsrTranscribeResult = {
         text: "Simple transcription",
         language: "en-US",
         duration: 2.0,
@@ -90,12 +93,15 @@ describe("vcon-enricher", () => {
           },
         ],
         processingTime: 300,
+        provider: "openai",
+        model: "whisper-1",
       };
 
       const input: EnrichmentInput = {
         dialogIndex: 0,
         transcription: simpleResult,
-        model: "parakeet-ctc-1.1b",
+        provider: "openai",
+        model: "whisper-1",
       };
 
       const wtf = createWtfTranscription(input);
@@ -106,7 +112,7 @@ describe("vcon-enricher", () => {
     });
 
     it("should detect multiple speakers", () => {
-      const multiSpeakerResult: TranscribeResult = {
+      const multiSpeakerResult: AsrTranscribeResult = {
         text: "Hello. Hi there.",
         language: "en-US",
         duration: 4.0,
@@ -128,12 +134,15 @@ describe("vcon-enricher", () => {
           },
         ],
         processingTime: 400,
+        provider: "deepgram",
+        model: "nova-2",
       };
 
       const input: EnrichmentInput = {
         dialogIndex: 0,
         transcription: multiSpeakerResult,
-        model: "parakeet-tdt-1.1b",
+        provider: "deepgram",
+        model: "nova-2",
       };
 
       const wtf = createWtfTranscription(input);
@@ -149,11 +158,12 @@ describe("vcon-enricher", () => {
       const input: EnrichmentInput = {
         dialogIndex: 0,
         transcription: mockTranscribeResult,
+        provider: "nvidia",
         model: "parakeet-tdt-1.1b",
       };
 
       const wtf = createWtfTranscription(input);
-      const analysis = createWtfAnalysis(0, wtf, "parakeet-tdt-1.1b");
+      const analysis = createWtfAnalysis(0, wtf, "nvidia", "parakeet-tdt-1.1b");
 
       expect(analysis.type).toBe("wtf_transcription");
       expect(analysis.dialog).toBe(0);
@@ -190,6 +200,7 @@ describe("vcon-enricher", () => {
         {
           dialogIndex: 0,
           transcription: mockTranscribeResult,
+          provider: "nvidia",
           model: "parakeet-tdt-1.1b",
           audioDuration: 3.0,
         },
@@ -223,6 +234,7 @@ describe("vcon-enricher", () => {
         {
           dialogIndex: 0,
           transcription: mockTranscribeResult,
+          provider: "nvidia",
           model: "parakeet-tdt-1.1b",
         },
       ];
@@ -262,6 +274,7 @@ describe("vcon-enricher", () => {
         {
           dialogIndex: 0,
           transcription: mockTranscribeResult,
+          provider: "nvidia",
           model: "parakeet-tdt-1.1b",
         },
         {
@@ -270,6 +283,7 @@ describe("vcon-enricher", () => {
             ...mockTranscribeResult,
             text: "Second dialog",
           },
+          provider: "nvidia",
           model: "parakeet-tdt-1.1b",
         },
       ];

@@ -1,9 +1,23 @@
-import { describe, it, expect, beforeAll, afterAll, vi, beforeEach } from "vitest";
+import {
+  describe,
+  it,
+  expect,
+  beforeAll,
+  afterAll,
+  vi,
+} from "vitest";
 import type { FastifyInstance } from "fastify";
 import { buildServer } from "../../src/server.js";
 
-// Mock the NVIDIA ASR client before imports
-vi.mock("../../src/services/nvidia-asr.js", () => {
+// Get the configured provider from environment (loaded by vitest.config.ts)
+const configuredProvider = process.env.ASR_PROVIDER || "nvidia";
+
+// Mock the providers module - data must be defined inside the factory
+vi.mock("../../src/providers/index.js", async (importOriginal) => {
+  const original = (await importOriginal()) as Record<string, unknown>;
+  const providerName = process.env.ASR_PROVIDER || "nvidia";
+
+  // Mock transcription result defined inside the factory
   const mockTranscribeResult = {
     text: "Hello, this is a test transcription.",
     language: "en-US",
@@ -29,17 +43,36 @@ vi.mock("../../src/services/nvidia-asr.js", () => {
       },
     ],
     processingTime: 1000,
+    provider: providerName,
+    model: "test-model",
+  };
+
+  const mockProvider = {
+    provider: providerName as const,
+    isConfigured: vi.fn().mockReturnValue(true),
+    healthCheck: vi
+      .fn()
+      .mockResolvedValue({
+        status: "ok",
+        provider: providerName,
+        model: "test-model",
+      }),
+    transcribe: vi.fn().mockResolvedValue(mockTranscribeResult),
+    transcribeBatch: vi
+      .fn()
+      .mockImplementation((requests: unknown[]) =>
+        Promise.resolve(requests.map(() => mockTranscribeResult))
+      ),
   };
 
   return {
-    nvidiaAsrClient: {
-      healthCheck: vi.fn().mockResolvedValue({ status: "ok" }),
-      transcribe: vi.fn().mockResolvedValue(mockTranscribeResult),
-      transcribeBatch: vi.fn().mockImplementation((requests: unknown[]) =>
-        Promise.resolve(requests.map(() => mockTranscribeResult))
-      ),
-    },
-    NvidiaAsrClient: vi.fn(),
+    ...original,
+    getProvider: vi.fn().mockReturnValue(mockProvider),
+    createProvider: vi.fn().mockReturnValue(mockProvider),
+    getConfiguredProviderNames: vi.fn().mockReturnValue([providerName]),
+    getAvailableProviders: vi.fn().mockReturnValue([mockProvider]),
+    clearProviderCache: vi.fn(),
+    defaultProvider: mockProvider,
   };
 });
 
@@ -70,7 +103,7 @@ describe("Transcribe API Integration Tests", () => {
   });
 
   describe("GET /health/ready", () => {
-    it("should return ready status with NIM health", async () => {
+    it("should return ready status with provider health", async () => {
       const response = await server.inject({
         method: "GET",
         url: "/health/ready",
@@ -79,7 +112,8 @@ describe("Transcribe API Integration Tests", () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
       expect(body.status).toBe("ok");
-      expect(body.services.nim.status).toBe("ok");
+      // Check for the configured provider (from env or default nvidia)
+      expect(body.services[configuredProvider].status).toBe("ok");
     });
   });
 
@@ -129,7 +163,7 @@ describe("Transcribe API Integration Tests", () => {
       // Should have WTF transcription in analysis
       expect(body.analysis).toHaveLength(1);
       expect(body.analysis[0].type).toBe("wtf_transcription");
-      expect(body.analysis[0].vendor).toBe("nvidia");
+      expect(body.analysis[0].vendor).toBe(configuredProvider);
       expect(body.analysis[0].schema).toBe("wtf-1.0");
       expect(body.analysis[0].encoding).toBe("json");
 
@@ -139,19 +173,20 @@ describe("Transcribe API Integration Tests", () => {
       expect(wtf.transcript.language).toBe("en-US");
       expect(wtf.transcript.confidence).toBeGreaterThan(0);
       expect(wtf.segments).toHaveLength(1);
-      expect(wtf.metadata.provider).toBe("nvidia");
+      expect(wtf.metadata.provider).toBe(configuredProvider);
 
       // Should have updated_at
       expect(body.updated_at).toBeDefined();
 
       // Should have stats in headers
       expect(response.headers["x-dialogs-processed"]).toBe("1");
+      expect(response.headers["x-provider"]).toBe(configuredProvider);
     });
 
-    it("should accept model parameter", async () => {
+    it("should accept provider parameter", async () => {
       const response = await server.inject({
         method: "POST",
-        url: "/transcribe?model=canary-1b",
+        url: `/transcribe?provider=${configuredProvider}`,
         payload: validVcon,
         headers: {
           "content-type": "application/json",
@@ -163,7 +198,7 @@ describe("Transcribe API Integration Tests", () => {
       const body = JSON.parse(response.body);
       expect(body.analysis).toBeDefined();
       expect(body.analysis.length).toBeGreaterThan(0);
-      expect(body.analysis[0].product).toBe("canary-1b");
+      expect(body.analysis[0].vendor).toBe(configuredProvider);
     });
 
     it("should reject invalid VCON", async () => {

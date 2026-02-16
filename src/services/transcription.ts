@@ -4,14 +4,13 @@
  */
 
 import type { NormalizedVcon } from "../types/vcon.js";
-import type { NvidiaAsrModel } from "../types/nvidia.js";
+import type { AsrProvider, AsrTranscribeRequest } from "../types/asr.js";
 import { parseVcon } from "./vcon-parser.js";
-import { extractAudioFromDialogs, type ExtractedAudio } from "./audio-extractor.js";
 import {
-  nvidiaAsrClient,
-  type TranscribeRequest,
-  type TranscribeResult,
-} from "./nvidia-asr.js";
+  extractAudioFromDialogs,
+  type ExtractedAudio,
+} from "./audio-extractor.js";
+import { getProvider } from "../providers/index.js";
 import {
   enrichVconWithTranscriptions,
   type EnrichmentInput,
@@ -20,7 +19,8 @@ import { logger } from "../utils/logger.js";
 import { config } from "../config.js";
 
 export interface TranscriptionOptions {
-  model?: NvidiaAsrModel;
+  provider?: AsrProvider;
+  model?: string;
   language?: string;
   wordTimestamps?: boolean;
   speakerDiarization?: boolean;
@@ -34,6 +34,8 @@ export interface TranscriptionSuccess {
     dialogsSkipped: number;
     dialogsFailed: number;
     totalProcessingTime: number;
+    provider: AsrProvider;
+    model?: string;
   };
 }
 
@@ -49,7 +51,7 @@ export type TranscriptionResult = TranscriptionSuccess | TranscriptionFailure;
  * Main transcription pipeline
  * 1. Parse and validate VCON
  * 2. Extract audio from dialogs
- * 3. Transcribe with NVIDIA NIM (optimized for H200)
+ * 3. Transcribe with selected ASR provider
  * 4. Enrich VCON with WTF transcription
  */
 export async function transcribeVcon(
@@ -57,7 +59,16 @@ export async function transcribeVcon(
   options?: TranscriptionOptions
 ): Promise<TranscriptionResult> {
   const startTime = Date.now();
-  const model = options?.model ?? config.nimDefaultModel;
+  const providerName = options?.provider ?? config.asrProvider;
+  const provider = getProvider(providerName);
+
+  // Check if provider is configured
+  if (!provider.isConfigured()) {
+    return {
+      success: false,
+      error: `ASR provider '${providerName}' is not configured. Check environment variables.`,
+    };
+  }
 
   // Step 1: Parse and validate VCON
   const parseResult = parseVcon(input);
@@ -75,7 +86,8 @@ export async function transcribeVcon(
     {
       uuid: vcon.uuid,
       audioDialogs: audioDialogs.length,
-      model,
+      provider: providerName,
+      model: options?.model,
     },
     "Starting VCON transcription"
   );
@@ -102,51 +114,41 @@ export async function transcribeVcon(
     };
   }
 
-  // Step 3: Transcribe with NVIDIA NIM
-  // Use batch processing for H200 efficiency
+  // Step 3: Transcribe with selected ASR provider
   const transcribeRequests: Array<{
     audio: ExtractedAudio;
-    request: TranscribeRequest;
+    request: AsrTranscribeRequest;
   }> = extraction.extracted.map((audio) => ({
     audio,
     request: {
       audioBuffer: audio.buffer,
       mediatype: audio.mediatype,
-      model,
       language: options?.language,
       options: {
-        word_timestamps: options?.wordTimestamps ?? true,
-        speaker_diarization: options?.speakerDiarization ?? false,
+        wordTimestamps: options?.wordTimestamps ?? true,
+        speakerDiarization: options?.speakerDiarization ?? false,
         punctuation: true,
       },
     },
   }));
 
-  const transcriptionResults: Array<{
-    audio: ExtractedAudio;
-    result: TranscribeResult;
-  }> = [];
-
-  // Process in parallel for H200 throughput optimization
-  const batchResults = await nvidiaAsrClient.transcribeBatch(
+  // Process in batch for throughput optimization
+  const batchResults = await provider.transcribeBatch(
     transcribeRequests.map((r) => r.request)
   );
 
-  for (let i = 0; i < transcribeRequests.length; i++) {
-    const req = transcribeRequests[i]!;
-    const result = batchResults[i]!;
-    transcriptionResults.push({
-      audio: req.audio,
-      result,
-    });
-  }
+  const transcriptionResults = transcribeRequests.map((req, i) => ({
+    audio: req.audio,
+    result: batchResults[i]!,
+  }));
 
   // Step 4: Enrich VCON with WTF transcription
   const enrichments: EnrichmentInput[] = transcriptionResults.map(
     ({ audio, result }) => ({
       dialogIndex: audio.dialogIndex,
       transcription: result,
-      model,
+      provider: result.provider,
+      model: result.model,
       audioDuration: audio.duration,
     })
   );
@@ -158,6 +160,7 @@ export async function transcribeVcon(
   logger.info(
     {
       uuid: vcon.uuid,
+      provider: providerName,
       dialogsProcessed: transcriptionResults.length,
       dialogsSkipped: extraction.skipped.length,
       dialogsFailed: extraction.errors.length,
@@ -174,6 +177,8 @@ export async function transcribeVcon(
       dialogsSkipped: extraction.skipped.length,
       dialogsFailed: extraction.errors.length,
       totalProcessingTime: totalTime,
+      provider: providerName,
+      model: transcriptionResults[0]?.result.model,
     },
   };
 }
@@ -183,12 +188,50 @@ export async function transcribeVcon(
  */
 export async function checkHealth(): Promise<{
   healthy: boolean;
-  nim: { status: string };
+  providers: Record<string, { status: string; model?: string }>;
 }> {
-  const nimHealth = await nvidiaAsrClient.healthCheck();
+  const providerName = config.asrProvider;
+  const provider = getProvider(providerName);
+  const health = await provider.healthCheck();
 
   return {
-    healthy: nimHealth.status === "ok",
-    nim: { status: nimHealth.status },
+    healthy: health.status === "ok",
+    providers: {
+      [providerName]: {
+        status: health.status,
+        model: health.model,
+      },
+    },
   };
+}
+
+/**
+ * Check health of all configured providers
+ */
+export async function checkAllProvidersHealth(): Promise<{
+  providers: Record<string, { status: string; model?: string; message?: string }>;
+}> {
+  const { getConfiguredProviderNames, createProvider } = await import(
+    "../providers/index.js"
+  );
+  const configuredProviders = getConfiguredProviderNames();
+
+  const results: Record<
+    string,
+    { status: string; model?: string; message?: string }
+  > = {};
+
+  await Promise.all(
+    configuredProviders.map(async (name) => {
+      const provider = createProvider(name);
+      const health = await provider.healthCheck();
+      results[name] = {
+        status: health.status,
+        model: health.model,
+        message: health.message,
+      };
+    })
+  );
+
+  return { providers: results };
 }

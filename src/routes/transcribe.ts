@@ -3,11 +3,15 @@
  */
 
 import type { FastifyInstance, FastifyPluginOptions } from "fastify";
-import { transcribeVcon, type TranscriptionOptions } from "../services/transcription.js";
-import type { NvidiaAsrModel } from "../types/nvidia.js";
+import {
+  transcribeVcon,
+  type TranscriptionOptions,
+} from "../services/transcription.js";
+import type { AsrProvider } from "../types/asr.js";
 
 interface TranscribeQuerystring {
-  model?: NvidiaAsrModel;
+  provider?: AsrProvider;
+  model?: string;
   language?: string;
   word_timestamps?: boolean;
   speaker_diarization?: boolean;
@@ -31,19 +35,16 @@ export async function transcribeRoutes(
         querystring: {
           type: "object",
           properties: {
+            provider: {
+              type: "string",
+              enum: ["nvidia", "openai", "deepgram", "groq", "local-whisper", "mlx-whisper"],
+              description:
+                "ASR provider to use (defaults to ASR_PROVIDER env var or nvidia)",
+            },
             model: {
               type: "string",
-              enum: [
-                "parakeet-ctc-1.1b",
-                "parakeet-ctc-0.6b",
-                "parakeet-rnnt-1.1b",
-                "parakeet-rnnt-0.6b",
-                "parakeet-tdt-1.1b",
-                "parakeet-tdt-0.6b",
-                "canary-1b",
-                "canary-0.6b",
-              ],
-              description: "NVIDIA ASR model to use",
+              description:
+                "Model to use (provider-specific, e.g., whisper-1 for OpenAI, nova-2 for Deepgram)",
             },
             language: {
               type: "string",
@@ -104,6 +105,7 @@ export async function transcribeRoutes(
     },
     async (request, reply) => {
       const options: TranscriptionOptions = {
+        provider: request.query.provider,
         model: request.query.model,
         language: request.query.language,
         wordTimestamps: request.query.word_timestamps,
@@ -128,6 +130,10 @@ export async function transcribeRoutes(
       reply.header("X-Dialogs-Skipped", result.stats.dialogsSkipped);
       reply.header("X-Dialogs-Failed", result.stats.dialogsFailed);
       reply.header("X-Processing-Time-Ms", result.stats.totalProcessingTime);
+      reply.header("X-Provider", result.stats.provider);
+      if (result.stats.model) {
+        reply.header("X-Model", result.stats.model);
+      }
 
       return reply.send(result.vcon);
     }
@@ -146,18 +152,14 @@ export async function transcribeRoutes(
         querystring: {
           type: "object",
           properties: {
+            provider: {
+              type: "string",
+              enum: ["nvidia", "openai", "deepgram", "groq", "local-whisper", "mlx-whisper"],
+              description: "ASR provider to use",
+            },
             model: {
               type: "string",
-              enum: [
-                "parakeet-ctc-1.1b",
-                "parakeet-ctc-0.6b",
-                "parakeet-rnnt-1.1b",
-                "parakeet-rnnt-0.6b",
-                "parakeet-tdt-1.1b",
-                "parakeet-tdt-0.6b",
-                "canary-1b",
-                "canary-0.6b",
-              ],
+              description: "Model to use (provider-specific)",
             },
             language: { type: "string" },
             word_timestamps: { type: "boolean", default: true },
@@ -191,6 +193,7 @@ export async function transcribeRoutes(
                   total: { type: "number" },
                   succeeded: { type: "number" },
                   failed: { type: "number" },
+                  provider: { type: "string" },
                 },
               },
             },
@@ -201,6 +204,7 @@ export async function transcribeRoutes(
     async (request, reply) => {
       const vcons = request.body;
       const options: TranscriptionOptions = {
+        provider: request.query.provider,
         model: request.query.model,
         language: request.query.language,
         wordTimestamps: request.query.word_timestamps,
@@ -235,6 +239,7 @@ export async function transcribeRoutes(
           total: results.length,
           succeeded,
           failed,
+          provider: options.provider ?? "nvidia",
         },
       });
     }

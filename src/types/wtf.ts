@@ -18,7 +18,7 @@ export interface WtfMetadata {
   created_at: string;
   processed_at: string;
   provider: string;
-  model: string;
+  model?: string;
   processing_time?: number;
   audio?: WtfAudioMetadata;
   options?: Record<string, unknown>;

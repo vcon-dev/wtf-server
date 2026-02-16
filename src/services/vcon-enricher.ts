@@ -12,24 +12,24 @@ import type {
   WtfQuality,
   WtfAnalysis,
 } from "../types/wtf.js";
-import type { TranscribeResult } from "./nvidia-asr.js";
-import type { NvidiaAsrModel } from "../types/nvidia.js";
+import type { AsrProvider, AsrTranscribeResult } from "../types/asr.js";
 import { logger } from "../utils/logger.js";
 
 export interface EnrichmentInput {
   dialogIndex: number;
-  transcription: TranscribeResult;
-  model: NvidiaAsrModel;
+  transcription: AsrTranscribeResult;
+  provider: AsrProvider;
+  model?: string;
   audioDuration?: number;
 }
 
 /**
- * Create a WTF transcription object from NVIDIA ASR result
+ * Create a WTF transcription object from ASR result
  */
 export function createWtfTranscription(
   input: EnrichmentInput
 ): WtfTranscription {
-  const { transcription, model, audioDuration } = input;
+  const { transcription, provider, model, audioDuration } = input;
   const now = new Date().toISOString();
 
   // Build words array
@@ -136,7 +136,7 @@ export function createWtfTranscription(
     metadata: {
       created_at: now,
       processed_at: now,
-      provider: "nvidia",
+      provider,
       model,
       processing_time: transcription.processingTime / 1000, // Convert to seconds
       audio: audioDuration
@@ -159,14 +159,15 @@ export function createWtfTranscription(
 export function createWtfAnalysis(
   dialogIndex: number,
   wtf: WtfTranscription,
-  model: NvidiaAsrModel
+  provider: AsrProvider,
+  model?: string
 ): WtfAnalysis {
   return {
     type: "wtf_transcription",
     dialog: dialogIndex,
     mediatype: "application/json",
-    vendor: "nvidia",
-    product: model,
+    vendor: provider,
+    product: model ?? provider,
     schema: "wtf-1.0",
     body: wtf,
     encoding: "json",
@@ -184,13 +185,19 @@ export function enrichVconWithTranscriptions(
 
   for (const input of enrichments) {
     const wtf = createWtfTranscription(input);
-    const analysis = createWtfAnalysis(input.dialogIndex, wtf, input.model);
+    const analysis = createWtfAnalysis(
+      input.dialogIndex,
+      wtf,
+      input.provider,
+      input.model
+    );
 
     newAnalyses.push(analysis as unknown as Analysis);
 
     logger.debug(
       {
         dialogIndex: input.dialogIndex,
+        provider: input.provider,
         textLength: wtf.transcript.text.length,
         segments: wtf.segments.length,
         words: wtf.words?.length ?? 0,

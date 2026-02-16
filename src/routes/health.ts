@@ -3,7 +3,11 @@
  */
 
 import type { FastifyInstance, FastifyPluginOptions } from "fastify";
-import { checkHealth } from "../services/transcription.js";
+import {
+  checkHealth,
+  checkAllProvidersHealth,
+} from "../services/transcription.js";
+import { getConfiguredProviderNames } from "../providers/index.js";
 
 export async function healthRoutes(
   fastify: FastifyInstance,
@@ -35,12 +39,12 @@ export async function healthRoutes(
     }
   );
 
-  // Readiness check (includes NIM service status)
+  // Readiness check (includes ASR provider status)
   fastify.get(
     "/health/ready",
     {
       schema: {
-        description: "Readiness check including external dependencies",
+        description: "Readiness check including ASR provider status",
         tags: ["health"],
         response: {
           200: {
@@ -50,12 +54,11 @@ export async function healthRoutes(
               timestamp: { type: "string" },
               services: {
                 type: "object",
-                properties: {
-                  nim: {
-                    type: "object",
-                    properties: {
-                      status: { type: "string" },
-                    },
+                additionalProperties: {
+                  type: "object",
+                  properties: {
+                    status: { type: "string" },
+                    model: { type: "string" },
                   },
                 },
               },
@@ -80,9 +83,51 @@ export async function healthRoutes(
       return reply.status(statusCode).send({
         status,
         timestamp: new Date().toISOString(),
-        services: {
-          nim: health.nim,
+        services: health.providers,
+      });
+    }
+  );
+
+  // All providers health check
+  fastify.get(
+    "/health/providers",
+    {
+      schema: {
+        description: "Health check for all configured ASR providers",
+        tags: ["health"],
+        response: {
+          200: {
+            type: "object",
+            properties: {
+              timestamp: { type: "string" },
+              configured: {
+                type: "array",
+                items: { type: "string" },
+              },
+              providers: {
+                type: "object",
+                additionalProperties: {
+                  type: "object",
+                  properties: {
+                    status: { type: "string" },
+                    model: { type: "string" },
+                    message: { type: "string" },
+                  },
+                },
+              },
+            },
+          },
         },
+      },
+    },
+    async (_request, reply) => {
+      const configured = getConfiguredProviderNames();
+      const health = await checkAllProvidersHealth();
+
+      return reply.send({
+        timestamp: new Date().toISOString(),
+        configured,
+        providers: health.providers,
       });
     }
   );

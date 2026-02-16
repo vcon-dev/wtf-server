@@ -1,8 +1,9 @@
 /**
- * WTF Server - VCON Transcription with NVIDIA NIM ASR
+ * WTF Server - VCON Transcription with Multi-Provider ASR
  * Entry point
  */
 
+import "dotenv/config";
 import { buildServer } from "./server.js";
 import { config } from "./config.js";
 import { logger } from "./utils/logger.js";
