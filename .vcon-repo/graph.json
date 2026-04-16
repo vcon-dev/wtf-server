@@ -1,0 +1,175 @@
+{
+  "schema_version": "1.0.0",
+  "repo": "wtf-server",
+  "repo_version": "1.0.0",
+  "archetype": "typescript-app",
+  "generated_at": "2026-04-16T15:15:46.789619+00:00",
+  "stats": {
+    "node_count": 24,
+    "edge_count": 0
+  },
+  "nodes": [
+    {
+      "id": "dependency:fastify",
+      "type": "dependency",
+      "name": "fastify",
+      "file": "package.json"
+    },
+    {
+      "id": "artifact:docker-image",
+      "type": "artifact",
+      "name": "Docker image",
+      "file": "Dockerfile"
+    },
+    {
+      "id": "component:src/providers",
+      "type": "component",
+      "name": "src/providers",
+      "file": "src/providers",
+      "description": "8 source files"
+    },
+    {
+      "id": "component:src/routes",
+      "type": "component",
+      "name": "src/routes",
+      "file": "src/routes",
+      "description": "3 source files"
+    },
+    {
+      "id": "component:src/schemas",
+      "type": "component",
+      "name": "src/schemas",
+      "file": "src/schemas",
+      "description": "3 source files"
+    },
+    {
+      "id": "component:src/services",
+      "type": "component",
+      "name": "src/services",
+      "file": "src/services",
+      "description": "6 source files"
+    },
+    {
+      "id": "component:src/types",
+      "type": "component",
+      "name": "src/types",
+      "file": "src/types",
+      "description": "5 source files"
+    },
+    {
+      "id": "component:src/utils",
+      "type": "component",
+      "name": "src/utils",
+      "file": "src/utils",
+      "description": "2 source files"
+    },
+    {
+      "id": "config:ASR_PROVIDER",
+      "type": "config",
+      "name": "ASR_PROVIDER",
+      "file": "tests/integration/transcribe.test.ts"
+    },
+    {
+      "id": "config:DEEPGRAM_API_KEY",
+      "type": "config",
+      "name": "DEEPGRAM_API_KEY",
+      "file": "tests/integration/providers.test.ts"
+    },
+    {
+      "id": "config:GROQ_API_KEY",
+      "type": "config",
+      "name": "GROQ_API_KEY",
+      "file": "tests/integration/providers.test.ts"
+    },
+    {
+      "id": "config:OPENAI_API_KEY",
+      "type": "config",
+      "name": "OPENAI_API_KEY",
+      "file": "tests/integration/providers.test.ts"
+    },
+    {
+      "id": "config:TEST_LOCAL_WHISPER",
+      "type": "config",
+      "name": "TEST_LOCAL_WHISPER",
+      "file": "tests/integration/providers.test.ts"
+    },
+    {
+      "id": "config:TEST_NVIDIA",
+      "type": "config",
+      "name": "TEST_NVIDIA",
+      "file": "tests/integration/providers.test.ts"
+    },
+    {
+      "id": "interface:npm-build",
+      "type": "interface",
+      "name": "npm run build",
+      "description": "tsup",
+      "file": "package.json"
+    },
+    {
+      "id": "interface:npm-dev",
+      "type": "interface",
+      "name": "npm run dev",
+      "description": "tsx watch src/index.ts",
+      "file": "package.json"
+    },
+    {
+      "id": "interface:npm-format",
+      "type": "interface",
+      "name": "npm run format",
+      "description": "prettier --write .",
+      "file": "package.json"
+    },
+    {
+      "id": "interface:npm-lint",
+      "type": "interface",
+      "name": "npm run lint",
+      "description": "eslint src tests",
+      "file": "package.json"
+    },
+    {
+      "id": "interface:npm-lint:fix",
+      "type": "interface",
+      "name": "npm run lint:fix",
+      "description": "eslint src tests --fix",
+      "file": "package.json"
+    },
+    {
+      "id": "interface:npm-start",
+      "type": "interface",
+      "name": "npm run start",
+      "description": "node dist/index.js",
+      "file": "package.json"
+    },
+    {
+      "id": "interface:npm-test",
+      "type": "interface",
+      "name": "npm run test",
+      "description": "vitest",
+      "file": "package.json"
+    },
+    {
+      "id": "interface:npm-test:coverage",
+      "type": "interface",
+      "name": "npm run test:coverage",
+      "description": "vitest run --coverage",
+      "file": "package.json"
+    },
+    {
+      "id": "interface:npm-test:run",
+      "type": "interface",
+      "name": "npm run test:run",
+      "description": "vitest run",
+      "file": "package.json"
+    },
+    {
+      "id": "interface:npm-typecheck",
+      "type": "interface",
+      "name": "npm run typecheck",
+      "description": "tsc --noEmit",
+      "file": "package.json"
+    }
+  ],
+  "edges": [],
+  "subsystems": []
+}
