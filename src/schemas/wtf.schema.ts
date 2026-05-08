@@ -164,8 +164,10 @@ export const WtfAnalysisSchema = z.object({
   mediatype: z.literal("application/json"),
   vendor: z.string().min(1),
   product: z.string().optional(),
-  schema: z.literal("wtf-1.0"),
-  body: WtfTranscriptionSchema,
+  schema: z.literal(
+    "https://datatracker.ietf.org/doc/html/draft-howe-vcon-wtf-extension-02"
+  ),
+  body: z.string(),
   encoding: z.literal("json"),
 });
 

@@ -51,7 +51,7 @@ export async function buildServer(): Promise<FastifyInstance> {
         },
       },
       externalDocs: {
-        url: "https://datatracker.ietf.org/doc/html/draft-howe-vcon-wtf-extension-01",
+        url: "https://datatracker.ietf.org/doc/html/draft-howe-vcon-wtf-extension-02",
         description: "WTF Extension Specification",
       },
       servers: [

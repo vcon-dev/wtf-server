@@ -168,8 +168,9 @@ export function createWtfAnalysis(
     mediatype: "application/json",
     vendor: provider,
     product: model ?? provider,
-    schema: "wtf-1.0",
-    body: wtf,
+    schema:
+      "https://datatracker.ietf.org/doc/html/draft-howe-vcon-wtf-extension-02",
+    body: JSON.stringify(wtf),
     encoding: "json",
   };
 }

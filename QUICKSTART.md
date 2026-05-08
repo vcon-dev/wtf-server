@@ -117,21 +117,9 @@ The response is the original VCON enriched with WTF transcription in the `analys
       "type": "wtf_transcription",
       "dialog": 0,
       "vendor": "local-whisper",
-      "schema": "wtf-1.0",
+      "schema": "https://datatracker.ietf.org/doc/html/draft-howe-vcon-wtf-extension-02",
       "encoding": "json",
-      "body": {
-        "transcript": {
-          "text": "Hello, how can I help you today?",
-          "language": "en",
-          "confidence": 0.95
-        },
-        "segments": [...],
-        "metadata": {
-          "provider": "local-whisper",
-          "model": "base",
-          "processingTime": 1234
-        }
-      }
+      "body": "{\"transcript\":{\"text\":\"Hello, how can I help you today?\",\"language\":\"en\",\"confidence\":0.95},\"segments\":[...],\"metadata\":{\"provider\":\"local-whisper\",\"model\":\"base\",\"processingTime\":1234}}"
     }
   ]
 }

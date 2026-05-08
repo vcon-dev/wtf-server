@@ -197,8 +197,9 @@ describe("WTF Schema Validation", () => {
         mediatype: "application/json",
         vendor: "nvidia",
         product: "parakeet-tdt-1.1b",
-        schema: "wtf-1.0",
-        body: {
+        schema:
+          "https://datatracker.ietf.org/doc/html/draft-howe-vcon-wtf-extension-02",
+        body: JSON.stringify({
           transcript: {
             text: "Hello",
             language: "en-US",
@@ -220,7 +221,7 @@ describe("WTF Schema Validation", () => {
             provider: "nvidia",
             model: "parakeet-tdt-1.1b",
           },
-        },
+        }),
         encoding: "json",
       };
 
@@ -235,8 +236,9 @@ describe("WTF Schema Validation", () => {
         dialog: [0, 1, 2],
         mediatype: "application/json",
         vendor: "nvidia",
-        schema: "wtf-1.0",
-        body: {
+        schema:
+          "https://datatracker.ietf.org/doc/html/draft-howe-vcon-wtf-extension-02",
+        body: JSON.stringify({
           transcript: {
             text: "Test",
             language: "en-US",
@@ -250,7 +252,7 @@ describe("WTF Schema Validation", () => {
             provider: "nvidia",
             model: "canary-1b",
           },
-        },
+        }),
         encoding: "json",
       };
 
@@ -265,8 +267,9 @@ describe("WTF Schema Validation", () => {
         dialog: 0,
         mediatype: "application/json",
         vendor: "nvidia",
-        schema: "wtf-1.0",
-        body: {},
+        schema:
+          "https://datatracker.ietf.org/doc/html/draft-howe-vcon-wtf-extension-02",
+        body: "{}",
         encoding: "json",
       };
 
@@ -281,8 +284,9 @@ describe("WTF Schema Validation", () => {
         dialog: 0,
         mediatype: "application/json",
         vendor: "nvidia",
-        schema: "wtf-2.0", // should be "wtf-1.0"
-        body: {},
+        schema:
+          "https://datatracker.ietf.org/doc/html/draft-howe-vcon-wtf-extension-01", // should be -02
+        body: "{}",
         encoding: "json",
       };
 

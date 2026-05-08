@@ -170,9 +170,11 @@ describe("vcon-enricher", () => {
       expect(analysis.mediatype).toBe("application/json");
       expect(analysis.vendor).toBe("nvidia");
       expect(analysis.product).toBe("parakeet-tdt-1.1b");
-      expect(analysis.schema).toBe("wtf-1.0");
+      expect(analysis.schema).toBe(
+        "https://datatracker.ietf.org/doc/html/draft-howe-vcon-wtf-extension-02"
+      );
       expect(analysis.encoding).toBe("json");
-      expect(analysis.body).toBe(wtf);
+      expect(JSON.parse(analysis.body)).toEqual(wtf);
     });
   });
 

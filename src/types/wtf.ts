@@ -1,7 +1,7 @@
 /**
  * WTF (World Transcription Format) Types
- * Based on IETF draft-howe-vcon-wtf-extension-01
- * https://datatracker.ietf.org/doc/html/draft-howe-vcon-wtf-extension-01
+ * Based on IETF draft-howe-vcon-wtf-extension-02
+ * https://datatracker.ietf.org/doc/html/draft-howe-vcon-wtf-extension-02
  */
 
 /** Audio metadata for the transcribed content */
@@ -147,7 +147,7 @@ export interface WtfAnalysis {
   mediatype: "application/json";
   vendor: string;
   product?: string;
-  schema: "wtf-1.0";
-  body: WtfTranscription;
+  schema: "https://datatracker.ietf.org/doc/html/draft-howe-vcon-wtf-extension-02";
+  body: string;
   encoding: "json";
 }

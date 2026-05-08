@@ -164,11 +164,13 @@ describe("Transcribe API Integration Tests", () => {
       expect(body.analysis).toHaveLength(1);
       expect(body.analysis[0].type).toBe("wtf_transcription");
       expect(body.analysis[0].vendor).toBe(configuredProvider);
-      expect(body.analysis[0].schema).toBe("wtf-1.0");
+      expect(body.analysis[0].schema).toBe(
+        "https://datatracker.ietf.org/doc/html/draft-howe-vcon-wtf-extension-02"
+      );
       expect(body.analysis[0].encoding).toBe("json");
 
-      // Should have valid WTF body
-      const wtf = body.analysis[0].body;
+      // Should have valid WTF body (stringified JSON per vCon spec)
+      const wtf = JSON.parse(body.analysis[0].body);
       expect(wtf.transcript.text).toBe("Hello, this is a test transcription.");
       expect(wtf.transcript.language).toBe("en-US");
       expect(wtf.transcript.confidence).toBeGreaterThan(0);
